@@ -11,6 +11,8 @@ const elements = {
     refreshBtn: document.getElementById('refreshBtn'),
     refreshIcon: document.getElementById('refreshIcon'),
     exportCsvBtn: document.getElementById('exportCsvBtn'),
+    themeToggleBtn: document.getElementById('themeToggleBtn'),
+    themeIcon: document.getElementById('themeIcon'),
     cacheStatus: document.getElementById('cacheStatus'),
     searchInput: document.getElementById('searchInput'),
     clearSearch: document.getElementById('clearSearch'),
@@ -44,6 +46,7 @@ const elements = {
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
+    initializeTheme();
     setupEventListeners();
     fetchReleases();
     setupProgressRing();
@@ -58,6 +61,9 @@ function setupEventListeners() {
 
     // Export CSV Button
     elements.exportCsvBtn.addEventListener('click', exportToCSV);
+
+    // Theme Toggle Button
+    elements.themeToggleBtn.addEventListener('click', toggleTheme);
 
     // Search Input
     elements.searchInput.addEventListener('input', () => {
@@ -530,5 +536,40 @@ function exportToCSV() {
     } catch (err) {
         console.error('Failed to export CSV: ', err);
         alert('Could not export to CSV. Please check browser permissions.');
+    }
+}
+
+// Initialize light/dark theme preference
+function initializeTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    if (savedTheme === 'light') {
+        document.body.classList.add('light-theme');
+        if (elements.themeIcon) {
+            elements.themeIcon.className = 'fa-regular fa-sun';
+        }
+    } else {
+        document.body.classList.remove('light-theme');
+        if (elements.themeIcon) {
+            elements.themeIcon.className = 'fa-regular fa-moon';
+        }
+    }
+}
+
+// Toggle page color theme between light and dark
+function toggleTheme() {
+    const isLight = document.body.classList.toggle('light-theme');
+    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    
+    // Swap icon and animation feedback
+    if (elements.themeIcon) {
+        elements.themeIcon.style.transform = 'scale(0) rotate(-90deg)';
+        setTimeout(() => {
+            if (isLight) {
+                elements.themeIcon.className = 'fa-regular fa-sun';
+            } else {
+                elements.themeIcon.className = 'fa-regular fa-moon';
+            }
+            elements.themeIcon.style.transform = 'scale(1) rotate(0deg)';
+        }, 150);
     }
 }
