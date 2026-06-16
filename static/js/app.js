@@ -10,6 +10,7 @@ let state = {
 const elements = {
     refreshBtn: document.getElementById('refreshBtn'),
     refreshIcon: document.getElementById('refreshIcon'),
+    exportCsvBtn: document.getElementById('exportCsvBtn'),
     cacheStatus: document.getElementById('cacheStatus'),
     searchInput: document.getElementById('searchInput'),
     clearSearch: document.getElementById('clearSearch'),
@@ -54,6 +55,9 @@ function setupEventListeners() {
     elements.refreshBtn.addEventListener('click', () => {
         fetchReleases(true);
     });
+
+    // Export CSV Button
+    elements.exportCsvBtn.addEventListener('click', exportToCSV);
 
     // Search Input
     elements.searchInput.addEventListener('input', () => {
@@ -265,6 +269,9 @@ function renderFeed() {
                     </span>
                 </div>
                 <div class="card-actions-wrapper">
+                    <button class="action-icon-btn copy-card-btn" title="Copy to Clipboard" aria-label="Copy update to clipboard">
+                        <i class="fa-regular fa-copy"></i>
+                    </button>
                     <a href="${release.link}" target="_blank" class="action-icon-btn" title="View Official Release Notes" aria-label="Open GCP release notes link">
                         <i class="fa-solid fa-arrow-up-right-from-square"></i>
                     </a>
@@ -281,6 +288,24 @@ function renderFeed() {
             </div>
         `;
         
+        // Add event listener to the Copy button
+        const copyBtn = card.querySelector('.copy-card-btn');
+        copyBtn.addEventListener('click', () => {
+            const rawContent = stripHtml(release.content).trim();
+            const copyText = `BigQuery Release Note [${release.type}] (${release.date}):\n\n${rawContent}\n\nLink: ${release.link}`;
+            navigator.clipboard.writeText(copyText).then(() => {
+                const icon = copyBtn.querySelector('i');
+                icon.className = 'fa-solid fa-check';
+                icon.style.color = 'var(--accent-feature)';
+                setTimeout(() => {
+                    icon.className = 'fa-regular fa-copy';
+                    icon.style.color = '';
+                }, 1500);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        });
+
         // Add event listener to the Draft Tweet button
         const tweetBtn = card.querySelector('.btn-tweet-now');
         tweetBtn.addEventListener('click', () => {
@@ -459,4 +484,51 @@ function postToTwitter() {
     
     window.open(intentUrl, '_blank', 'noopener,noreferrer');
     closeComposerModal();
+}
+
+// Export filtered releases to CSV
+function exportToCSV() {
+    if (state.filteredReleases.length === 0) {
+        alert('No release notes available to export.');
+        return;
+    }
+    
+    const headers = ['Date', 'Type', 'Description', 'Link'];
+    const rows = state.filteredReleases.map(release => [
+        release.date,
+        release.type,
+        stripHtml(release.content).replace(/\s+/g, ' ').trim(),
+        release.link
+    ]);
+    
+    // Helper to escape values for CSV
+    const escapeCsv = (str) => {
+        if (str === null || str === undefined) return '';
+        const val = String(str);
+        if (val.includes('"') || val.includes(',') || val.includes('\n') || val.includes('\r')) {
+            return `"${val.replace(/"/g, '""')}"`;
+        }
+        return val;
+    };
+    
+    const csvContent = [
+        headers.map(escapeCsv).join(','),
+        ...rows.map(row => row.map(escapeCsv).join(','))
+    ].join('\r\n');
+    
+    // Create Blob and trigger download
+    try {
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `bigquery_releases_${new Date().toISOString().slice(0, 10)}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } catch (err) {
+        console.error('Failed to export CSV: ', err);
+        alert('Could not export to CSV. Please check browser permissions.');
+    }
 }
