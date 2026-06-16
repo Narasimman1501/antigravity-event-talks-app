@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A premium release note tracker for Google Cloud BigQuery with Twitter integration.">
+    <title>BigQuery Release Hub</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar / Header Area -->
+        <header class="app-header">
+            <div class="brand-section">
+                <div class="logo-container">
+                    <i class="fa-solid fa-database logo-icon"></i>
+                    <div class="logo-glow"></div>
+                </div>
+                <div>
+                    <h1 class="app-title">BigQuery Release Hub</h1>
+                    <p class="app-subtitle">Track, filter, and share the latest Google BigQuery updates</p>
+                </div>
+            </div>
+            
+            <div class="header-actions">
+                <span class="cache-status" id="cacheStatus">Last checked: Never</span>
+                <button id="refreshBtn" class="btn btn-primary" title="Refresh Release Notes">
+                    <i class="fa-solid fa-arrows-rotate" id="refreshIcon"></i>
+                    <span>Refresh</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats Counter Panel -->
+        <section class="stats-panel" aria-label="Release Statistics">
+            <div class="stat-card">
+                <span class="stat-label">Total Updates</span>
+                <span class="stat-value" id="statTotal">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Features</span>
+                <span class="stat-value accent-feature" id="statFeatures">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Issues & Fixes</span>
+                <span class="stat-value accent-issue" id="statIssues">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Deprecations</span>
+                <span class="stat-value accent-deprecation" id="statDeprecations">0</span>
+            </div>
+        </section>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Filter and Search Bar -->
+            <section class="control-bar" aria-label="Filters and Search">
+                <div class="search-wrapper">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                    <input type="text" id="searchInput" placeholder="Search updates by keyword..." autocomplete="off">
+                    <button id="clearSearch" class="clear-btn" style="display: none;"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                
+                <div class="filter-wrapper">
+                    <label for="typeFilter" class="filter-label">Filter by Type:</label>
+                    <select id="typeFilter" class="filter-select">
+                        <option value="all">All Updates</option>
+                        <!-- Options populated dynamically -->
+                    </select>
+                </div>
+            </section>
+
+            <!-- Loading View -->
+            <div id="loadingState" class="loading-state">
+                <div class="spinner-container">
+                    <div class="glow-spinner"></div>
+                    <i class="fa-solid fa-circle-notch fa-spin spinner-icon"></i>
+                </div>
+                <p>Loading latest release notes...</p>
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <i class="fa-regular fa-folder-open empty-icon"></i>
+                <h3>No updates found</h3>
+                <p>Try adjusting your filters or search keywords.</p>
+            </div>
+
+            <!-- Feed View -->
+            <section id="releaseFeed" class="release-feed" aria-label="BigQuery Releases">
+                <!-- Cards will be injected here by JavaScript -->
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer-credit">
+            <p>BigQuery Release Hub &bull; Powered by Flask &amp; Gemini</p>
+        </footer>
+    </div>
+
+    <!-- Tweet Composer Modal -->
+    <div id="tweetModal" class="modal-backdrop" style="display: none;">
+        <div class="modal-container">
+            <div class="modal-header">
+                <div class="modal-title-wrapper">
+                    <i class="fa-brands fa-x-twitter modal-title-icon"></i>
+                    <h2>Compose Tweet</h2>
+                </div>
+                <button id="closeModalBtn" class="close-modal-btn" title="Close Modal">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="tweet-composer-card">
+                    <div class="composer-header">
+                        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=BigQueryHub" alt="User Avatar" class="avatar">
+                        <div class="composer-user-info">
+                            <span class="composer-display-name">BigQuery Release Bot</span>
+                            <span class="composer-username">@bq_release_hub</span>
+                        </div>
+                    </div>
+                    
+                    <textarea id="tweetTextArea" class="tweet-textarea" placeholder="What's happening?" maxlength="280"></textarea>
+                    
+                    <div class="composer-footer">
+                        <div class="character-counter">
+                            <span id="charCount">0</span>/280
+                            <svg class="progress-ring" width="24" height="24">
+                                <circle class="progress-ring-bg" stroke="#1f2937" stroke-width="2" fill="transparent" r="9" cx="12" cy="12" />
+                                <circle id="progressRingCircle" class="progress-ring-circle" stroke="#8b5cf6" stroke-width="2" fill="transparent" r="9" cx="12" cy="12" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-options">
+                    <h3>Quick Settings</h3>
+                    <div class="options-grid">
+                        <label class="toggle-control">
+                            <input type="checkbox" id="optIncludeLink" checked>
+                            <span class="control-label-text">Include Release Link</span>
+                        </label>
+                        <label class="toggle-control">
+                            <input type="checkbox" id="optIncludeDate" checked>
+                            <span class="control-label-text">Include Date</span>
+                        </label>
+                        <label class="toggle-control">
+                            <input type="checkbox" id="optHashtags" checked>
+                            <span class="control-label-text">Include Hashtags</span>
+                        </label>
+                    </div>
+                    
+                    <div class="hashtags-input-wrapper">
+                        <label for="tweetHashtags" class="input-label">Hashtags:</label>
+                        <input type="text" id="tweetHashtags" class="text-input" value="#BigQuery #GoogleCloud #GCP">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button id="cancelTweetBtn" class="btn btn-secondary">Cancel</button>
+                <button id="postTweetBtn" class="btn btn-twitter">
+                    <i class="fa-brands fa-x-twitter"></i>
+                    <span>Share to X</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Script -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
